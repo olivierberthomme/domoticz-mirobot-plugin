@@ -129,7 +129,7 @@ Now go to **Setup** -> **Hardware** in your Domoticz interface and add type with
 | Fan Level Type | ```Standard``` - standard set of buttons (values supported by MiHome); ```Slider``` - allow to set custom values, up to 100 (in standard Max=90) (values not supported by MiHome) |
 | Debug | When set to true the plugin shows additional information in the Domoticz log |
 
-##How to find zone cordinates
+## How to find zone cordinates
 
 Check the [instruction](https://www.npmjs.com/package/homebridge-xiaomi-roborock-vacuum-zones)
 
