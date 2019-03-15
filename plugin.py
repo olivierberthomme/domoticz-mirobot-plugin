@@ -1,13 +1,17 @@
 #       
 #       Xiaomi Mi Robot Vacuum Plugin
-#       Author: mrin, 2017
+#       Author: mrin, 2017, avgays, 2019
 #       
 """
-<plugin key="xiaomi-mi-robot-vacuum" name="Xiaomi Mi Robot Vacuum" author="mrin" version="0.1.3" wikilink="https://github.com/mrin/domoticz-mirobot-plugin" externallink="">
+<plugin key="xiaomi-mi-robot-vacuum" name="Xiaomi Mi Robot Vacuum" author="mrin/avgays" version="0.1.5" wikilink="https://github.com/avgays/domoticz-mirobot-plugin" externallink="">
     <params>
-        <param field="Mode6" label="MIIOServer host:port" width="200px" required="true" default="127.0.0.1:22222"/>
+        <param field="Address" label="MIIOServer IP Address" width="200px" required="true" default="127.0.0.1"/>
+        <param field="Port" label="MIIOServer Port" width="60px" required="true" default="22222"/>
+        <param field="Mode3" label="Zones" width="600px" required="false" default="{}"/>
+        <param field="Mode6" label="Targets" width="600px" required="true" default="{}"/>
+        
         <param field="Mode2" label="Update interval (sec)" width="30px" required="true" default="15"/>
-        <param field="Mode5" label="Fan Level Type" width="200px">
+        <param field="Mode5" label="Fan Level Type" width="300px">
             <options>
                 <option label="Standard (Quiet, Balanced, Turbo, Max)" value="selector" default="true"/>
                 <option label="Slider" value="dimmer"/>
@@ -27,12 +31,16 @@
 import os
 import sys
 
-module_paths = [x[0] for x in os.walk( os.path.join(os.path.dirname(__file__), '.', '.env/lib/') ) if x[0].endswith('site-packages') ]
-for mp in module_paths:
-    sys.path.append(mp)
-
+#module_paths = [x[0] for x in os.walk( os.path.join(os.path.dirname(__file__), '.', '.env/lib/') ) if x[0].endswith('site-packages') ]
+#for mp in module_paths:
+#    sys.path.append(mp)
+sys.path.append('/usr/lib/python3.5')
 import Domoticz
 import msgpack
+import json
+import base64
+from datetime import datetime
+from datetime import timedelta
 
 
 class BasePlugin:
@@ -54,42 +62,70 @@ class BasePlugin:
         "LevelOffHidden": "true",
         "SelectorStyle": "0"
     }
-
+    zoneOptions = {
+        "LevelActions": "",
+        "LevelNames": "Off",
+        "LevelOffHidden": "true",
+        "SelectorStyle": "0"
+    }
+    targetOptions = {
+        "LevelActions": "",
+        "LevelNames": "Off",
+        "LevelOffHidden": "true",
+        "SelectorStyle": "0"
+    }
+    myzones={}
+    mytargets={}
+    battery=0
     customSensorOptions = {"Custom": "1;%"}
 
     iconName = 'xiaomi-mi-robot-vacuum-icon'
+    mainIconName = 'xiaomi-mi-robot-vacuum-main'
+    targetIconName = 'xiaomi-mi-robot-vacuum-target'
+    zoneIconName = 'xiaomi-mi-robot-vacuum-zone'
+    sensorsIconName = 'xiaomi-mi-robot-vacuum-sensors'
+    mbrushIconName = 'xiaomi-mi-robot-vacuum-mbrush'
+    brushIconName = 'xiaomi-mi-robot-vacuum-brush'
+    filterIconName = 'xiaomi-mi-robot-vacuum-filter'
+    chargeIconName = 'xiaomi-mi-robot-vacuum-charge'
+    
 
     statusUnit = 1
     controlUnit = 2
     fanDimmerUnit = 3
     fanSelectorUnit = 4
-    batteryUnit = 5
+#    batteryUnit = 5
     cMainBrushUnit = 6
     cSideBrushUnit = 7
     cSensorsUnit = 8
     cFilterUnit = 9
     cResetControlUnit = 10
+    zoneControlUnit = 11
+    targetControlUnit = 12
 
     # statuses by protocol
     # https://github.com/marcelrv/XiaomiRobotVacuumProtocol/blob/master/StatusMessage.md
     states = {
-        0: 'Unknown 0',
-        1: 'Initiating',
-        2: 'Sleeping',
-        3: 'Waiting',
-        4: 'Unknown 4',
-        5: 'Cleaning',
-        6: 'Back to home',
-        7: 'Manual mode',
-        8: 'Charging',
-        9: 'Charging Error',
-        10: 'Paused',
-        11: 'Spot cleaning',
-        12: 'In Error',
-        13: 'Shutting down',
-        14: 'Updating',
-        15: 'Docking',
-        100: 'Full'
+        0: 'Неизвестно 0', #'Unknown 0',
+        1: 'Инициализация', #'Initiating',
+        2: 'Сон', #'Sleeping',
+        3: 'Ожидание', #'Waiting',
+        4: 'Неизвестно 4', #'Unknown 4',
+        5: 'Уборка', #'Cleaning',
+        6: 'Возврат на базу', #'Back to home',
+        7: 'Ручной режим', #'Manual mode',
+        8: 'Зарядка', #'Charging',
+        9: 'Ошибка зарядки', #'Charging Error',
+        10: 'Пауза', #'Paused',
+        11: 'Точечная уборка', #'Spot cleaning',
+        12: 'Ошибка ввода', #'In Error',
+        13: 'Выключение', #'Shutting down',
+        14: 'Обновление', #'Updating',
+        15: 'На базе', #'Docking',
+        16: 'Перемещение в точку', #'Go To',
+        17: 'Зональная уборка', #'Zone cleaning',
+        100: 'Полный', #'Full'
+        200: 'На базе'
     }
 
 
@@ -104,53 +140,112 @@ class BasePlugin:
         if Parameters['Mode4'] == 'Debug':
             Domoticz.Debugging(1)
             DumpConfigToLog()
+        try:
+            self.myzones = json.loads(Parameters['Mode3'])
+        except Exception:
+            self.myzones={}
+        Domoticz.Debug("Gots zones: %s" % self.myzones)
 
+        try:
+            self.mytargets = json.loads(Parameters['Mode6'])
+        except Exception:
+            self.mytargets={}
+        Domoticz.Debug("Gots targets: %s" % self.mytargets)
+        
         self.heartBeatCnt = 0
-        self.subHost, self.subPort = Parameters['Mode6'].split(':')
+        self.subHost = Parameters['Address']
+        self.subPort = Parameters['Port']
 
         self.tcpConn = Domoticz.Connection(Name='MIIOServer', Transport='TCP/IP', Protocol='None',
                                            Address=self.subHost, Port=self.subPort)
 
+
         if self.iconName not in Images: Domoticz.Image('icons.zip').Create()
         iconID = Images[self.iconName].ID
+        
+        if self.mainIconName not in Images: Domoticz.Image('xiaomi-mi-robot-vacuum-main.zip').Create()
+        mainIconID = Images[self.mainIconName].ID
+        
+        if self.targetIconName not in Images: Domoticz.Image('xiaomi-mi-robot-vacuum-target.zip').Create()
+        targetIconID = Images[self.targetIconName].ID
+        
+        if self.zoneIconName not in Images: Domoticz.Image('xiaomi-mi-robot-vacuum-zone.zip').Create()
+        zoneIconID = Images[self.zoneIconName].ID
+        
+        if self.sensorsIconName not in Images: Domoticz.Image('xiaomi-mi-robot-vacuum-sensors.zip').Create()
+        sensorsIconID = Images[self.sensorsIconName].ID
+
+        if self.mbrushIconName not in Images: Domoticz.Image('xiaomi-mi-robot-vacuum-mbrush.zip').Create()
+        mbrushIconID = Images[self.mbrushIconName].ID
+        
+        if self.brushIconName not in Images: Domoticz.Image('xiaomi-mi-robot-vacuum-brush.zip').Create()
+        brushIconID = Images[self.brushIconName].ID
+
+        if self.filterIconName not in Images: Domoticz.Image('xiaomi-mi-robot-vacuum-filter.zip').Create()
+        filterIconID = Images[self.filterIconName].ID
+
+        if self.chargeIconName not in Images: Domoticz.Image('xiaomi-mi-robot-vacuum-charge.zip').Create()
+        chargeIconID = Images[self.chargeIconName].ID
+
 
         if self.statusUnit not in Devices:
-            Domoticz.Device(Name='Status', Unit=self.statusUnit, Type=17,  Switchtype=17, Image=iconID).Create()
+            Domoticz.Device(Name='Status', Unit=self.statusUnit, Type=17,  Switchtype=17, Image=mainIconID).Create()
 
         if self.controlUnit not in Devices:
             Domoticz.Device(Name='Control', Unit=self.controlUnit, TypeName='Selector Switch',
-                            Image=iconID, Options=self.controlOptions).Create()
+                            Image=mainIconID, Options=self.controlOptions).Create()
 
         if self.fanDimmerUnit not in Devices and Parameters['Mode5'] == 'dimmer':
             Domoticz.Device(Name='Fan Level', Unit=self.fanDimmerUnit, Type=244, Subtype=73, Switchtype=7,
-                            Image=iconID).Create()
+                            Image=mainIconID).Create()
         elif self.fanSelectorUnit not in Devices and Parameters['Mode5'] == 'selector':
             Domoticz.Device(Name='Fan Level', Unit=self.fanSelectorUnit, TypeName='Selector Switch',
-                                Image=iconID, Options=self.fanOptions).Create()
+                                Image=mainIconID, Options=self.fanOptions).Create()
 
-        if self.batteryUnit not in Devices:
-            Domoticz.Device(Name='Battery', Unit=self.batteryUnit, TypeName='Custom', Image=iconID,
-                            Options=self.customSensorOptions).Create()
+#        if self.batteryUnit not in Devices:
+#            Domoticz.Device(Name='Battery', Unit=self.batteryUnit, TypeName='Custom', Image=chargeIconID,
+#                            Options=self.customSensorOptions).Create()
 
         if self.cMainBrushUnit not in Devices:
-            Domoticz.Device(Name='Care Main Brush', Unit=self.cMainBrushUnit, TypeName='Custom', Image=iconID,
+            Domoticz.Device(Name='Care Main Brush', Unit=self.cMainBrushUnit, TypeName='Custom', Image=mbrushIconID,
                             Options=self.customSensorOptions).Create()
 
         if self.cSideBrushUnit not in Devices:
-            Domoticz.Device(Name='Care Side Brush', Unit=self.cSideBrushUnit, TypeName='Custom', Image=iconID,
+            Domoticz.Device(Name='Care Side Brush', Unit=self.cSideBrushUnit, TypeName='Custom', Image=brushIconID,
                             Options=self.customSensorOptions).Create()
 
         if self.cSensorsUnit not in Devices:
-            Domoticz.Device(Name='Care Sensors ', Unit=self.cSensorsUnit, TypeName='Custom', Image=iconID,
+            Domoticz.Device(Name='Care Sensors ', Unit=self.cSensorsUnit, TypeName='Custom', Image=sensorsIconID,
                             Options=self.customSensorOptions).Create()
 
         if self.cFilterUnit not in Devices:
-            Domoticz.Device(Name='Care Filter', Unit=self.cFilterUnit, TypeName='Custom', Image=iconID,
+            Domoticz.Device(Name='Care Filter', Unit=self.cFilterUnit, TypeName='Custom', Image=filterIconID,
                             Options=self.customSensorOptions).Create()
 
         if self.cResetControlUnit not in Devices:
-            Domoticz.Device(Name='Care Reset Control', Unit=self.cResetControlUnit, TypeName='Selector Switch', Image=iconID,
+            Domoticz.Device(Name='Care Reset Control', Unit=self.cResetControlUnit, TypeName='Selector Switch', Image=mainIconID,
                             Options=self.careOptions).Create()
+        if self.zoneControlUnit not in Devices:
+            i=1
+            while i <= len(self.myzones):
+                Options=str(i*10)
+                self.zoneOptions["LevelActions"] += "|"
+                self.zoneOptions["LevelNames"] += "|" + str(self.myzones[Options][0])
+                i += 1
+            Domoticz.Log("Zone names: %s" % self.zoneOptions["LevelNames"] )
+            Domoticz.Device(Name='Zone Control', Unit=self.zoneControlUnit, TypeName='Selector Switch', Image=zoneIconID,
+                            Options=self.zoneOptions).Create()
+
+        if self.targetControlUnit not in Devices:
+            i=1
+            while i <= len(self.mytargets):
+                Options=str(i*10)
+                self.targetOptions["LevelActions"] += "|"
+                self.targetOptions["LevelNames"] += "|" + str(self.mytargets[Options][0])
+                i += 1
+            Domoticz.Log("Target names: %s" % self.targetOptions["LevelNames"] )
+            Domoticz.Device(Name='Target Control', Unit=self.targetControlUnit, TypeName='Selector Switch', Image=targetIconID,
+                            Options=self.targetOptions).Create()
 
         Domoticz.Heartbeat(int(Parameters['Mode2']))
 
@@ -159,7 +254,7 @@ class BasePlugin:
         pass
 
     def onConnect(self, Connection, Status, Description):
-        Domoticz.Debug("MIIOServer connection status is [%s] [%s]" % (Status, Description))
+        Domoticz.Status("MIIOServer connection status is [%s] [%s]" % (Status, Description))
 
     def onMessage(self, Connection, Data):
         try:
@@ -171,19 +266,31 @@ class BasePlugin:
                 if 'exception' in result: return
 
                 if result['cmd'] == 'status':
-
+                    now = datetime.now()
+                    self.battery=int(result['battery'])
+                    if (result['state_code'] == 8) and (self.battery == 100) : result['state_code']=200
                     UpdateDevice(self.statusUnit,
-                                 (1 if result['state_code'] in [5, 6, 11] else 0), # ON is Cleaning, Back to home, Spot cleaning
-                                 self.states.get(result['state_code'], 'Undefined')
-                                 )
+                                 (1 if result['state_code'] in [5, 6, 11, 14, 16, 17] else 0), # ON is Cleaning, Back to home, Spot cleaning, Go To, Zone cleaning
+                                 self.states.get(result['state_code'], 'Undefined') + '. Заряд ' + str(self.battery) + '%',
+                                 self.battery)
+                    
+                    if (result['state_code'] != 17) and (Devices[self.zoneControlUnit].nValue != 0):
+                        if (datetime.now() - datetime.strptime(Devices[self.zoneControlUnit].LastUpdate, "%Y-%m-%d %H:%M:%S")).seconds > 29:
+                            Domoticz.Status('Убока зоны %s завершена, площадь %s кв.м., время %s минут  ' % (self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], result['clean_area'], (result['clean_seconds']/60) ))
+                            UpdateDevice(self.zoneControlUnit, 0, 'Off')
 
-                    UpdateDevice(self.batteryUnit, result['battery'], str(result['battery']), result['battery'],
-                                 AlwaysUpdate=(self.heartBeatCnt % 100 == 0))
+
+                    if result['state_code'] != 16 and (Devices[self.targetControlUnit].nValue != 0):
+                        UpdateDevice(self.targetControlUnit, 0, 'Off')
+#                        Domoticz.Log('Target LastUpdate: %s' % Devices[self.targetControlUnit].LastUpdate)
+
+#                    UpdateDevice(self.batteryUnit, result['battery'], str(result['battery']), result['battery'],
+#                                 AlwaysUpdate=(self.heartBeatCnt % 100 == 0))
 
                     if Parameters['Mode5'] == 'dimmer':
                         UpdateDevice(self.fanDimmerUnit, 2, str(result['fan_level'])) # nValue=2 for show percentage, instead ON/OFF state
                     else:
-                        level = {38: 10, 60: 20, 77: 30, 90: 40}.get(result['fan_level'], None)
+                        level = {38: 10, 60: 20, 77: 30, 100: 40}.get(result['fan_level'], None)
                         if level: UpdateDevice(self.fanSelectorUnit, 1, str(level))
 
                 elif result['cmd'] == 'consumable_status':
@@ -276,6 +383,16 @@ class BasePlugin:
                     UpdateDevice(self.cSensorsUnit, 100, '100')
 
             self.apiRequest('consumable_status')
+            
+        elif self.zoneControlUnit == Unit and self.isOFF:
+            if self.apiRequest('zoned_clean', self.myzones[str(Level)][1]):
+                UpdateDevice(self.zoneControlUnit, 1, str(Level))
+                Domoticz.Status("Уборка зоны %s" % (self.myzones[str(Level)][0]))
+
+        elif self.targetControlUnit == Unit and self.isOFF:
+            if self.apiRequest('goto', self.mytargets[str(Level)][1]):
+                UpdateDevice(self.targetControlUnit, 1, str(Level))
+                Domoticz.Status("Перемещение в точку %s" % (self.mytargets[str(Level)][0]))
 
 
     def onNotification(self, Name, Subject, Text, Status, Priority, Sound, ImageFile):

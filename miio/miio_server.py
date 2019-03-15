@@ -2,9 +2,8 @@
 import sys
 import os
 
-module_paths = [x[0] for x in os.walk( os.path.join(os.path.dirname(__file__), '.', '.env/lib/') ) if x[0].endswith('site-packages') ]
-for mp in module_paths:
-    sys.path.append(mp)
+sys.path.append('/usr/lib/python3.5')
+
 
 from gevent import monkey
 monkey.patch_all()
@@ -22,8 +21,8 @@ from logging.handlers import RotatingFileHandler
 import logging
 
 parser = argparse.ArgumentParser()
-parser.add_argument('ip', type=str, help='vacuum ip address', default='192.168.1.12"')
-parser.add_argument('token', type=str, help='token', default='476e6b70343055483230644c53707a12')
+parser.add_argument('ip', type=str, help='vacuum ip address', default='192.168.1.87"')
+parser.add_argument('token', type=str, help='token', default='4f3937327345674661583178536d674a')
 parser.add_argument('--host', type=str, default='127.0.0.1')
 parser.add_argument('--port', type=int, default=22222)
 args = parser.parse_args()
@@ -157,6 +156,14 @@ class VacuumCommand(object):
     @classmethod
     def set_fan_level(cls, vac, level):
         return {'code': vac.set_fan_speed(int(level))}
+
+    @classmethod
+    def zoned_clean(cls, vac, zones):
+        return {'code': vac.zoned_clean(zones)}
+
+    @classmethod
+    def goto(cls, vac, coord):
+        return {'code': vac.goto(int(coord[0]), int(coord[1]))}    
 
     @classmethod
     def consumable_status(cls, vac):

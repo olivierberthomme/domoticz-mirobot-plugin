@@ -16,8 +16,8 @@ SCRIPTNAME=/etc/init.d/miio_server
 PIDFILE=/var/run/miio_server.pid
 
 DAEMON_USER=root
-DAEMON=/home/pi/domoticz/plugins/xiaomi-mirobot/miio_server.py
-DAEMON_ARGS="192.168.1.12 476e6b70343055483230644c53707a12"
+DAEMON=/home/pi/miio/miio_server.py
+DAEMON_ARGS="192.168.1.87 4f3937327345674661583178536d674a"
 DAEMON_ARGS="$DAEMON_ARGS --host 127.0.0.1 --port 22222"
 
 # Exit if the package is not installed
