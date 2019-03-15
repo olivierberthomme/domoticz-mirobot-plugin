@@ -3,26 +3,28 @@
 
 *This plugin uses the [Python-miio](https://github.com/rytilahti/python-miio) library.*
 
+*[Python-miio] require Python 3.5*
+
 *See this [link](https://www.domoticz.com/wiki/Using_Python_plugins) for more information on the Domoticz plugins.*
 
 ## How it works
 
-Plugin provides: Status, Control, Fan Level, Battery, Care status devices
+Plugin provides: Status, Control, Fan Level, Battery, Care status devices, Zone Control, Target Control
 
 **Status**: show current status in readable layout of switch. Status updates by polls 
-(interval) and when you click Control device (for instant status change).
+(interval) and when you click Control device (for instant status change). since ```0.1.5``` Battery Level added to status
 
 **Control**: for sending commands.
 
 **Fan Level**: for adjusting suction power. (MiHome app related: Quiet=38, Balanced=60, Turbo=77, Max=90)
 
-**Battery**: since ```0.0.4``` as new device
+**Battery**: since ```0.1.5``` removed
 
 **Care**: since ```0.1.0``` new 5 devices (care status + reset tool)
 
->Since ```0.1.0``` plugin uses wrapper-server for python-miio lib. It helps to use this plugin in Domoticz without blocking mode.
+**Zone Control**
 
->Since ```0.1.2``` wrapper-server (MIIO Server) runs outside plugin due limits of domoticz python plugin system.
+**Target Control** 
 
 ## Installation
 
