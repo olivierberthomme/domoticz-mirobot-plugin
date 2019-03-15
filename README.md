@@ -48,10 +48,10 @@ mv ~/domoticz/plugins/xiaomi-mirobot/miio/ ~/
 
 # and then:
 sudo pip3 install -r pip_req.txt 
-# or sudo pip3 install gevent msgpack-python python-miio==0.3.1
+# or sudo pip3 install gevent msgpack-python python-miio
 ```
 
-Since ```0.1.2``` need some prepare of **MIIO Server** to run as service:
+Need some prepare of **MIIO Server** to run as service:
 1. Open and edit miio_server.sh by vi/nano:
 ```
 cd ~/miio/
@@ -145,8 +145,11 @@ sudo service domoticz.sh restart
 
 ## Screenshots
 
-![status_unit](https://user-images.githubusercontent.com/93999/29568433-0da95692-8759-11e7-8706-344c02536d6a.png)
+
+![RR_Status](https://user-images.githubusercontent.com/25368137/54459874-f98e2200-4778-11e9-8d3f-ad9770937111.jpg)
 ![control_unit](https://user-images.githubusercontent.com/93999/29568435-13645e10-8759-11e7-92d8-5fe130912c78.png)
+![RR_Zone](https://user-images.githubusercontent.com/25368137/54459902-1165a600-4779-11e9-88d2-675f60848e22.jpg)
+![RR_Target](https://user-images.githubusercontent.com/25368137/54459912-1a567780-4779-11e9-9e1d-c41657def6ca.jpg)
 
 ![fan_level](https://user-images.githubusercontent.com/93999/29668575-6906ea22-88e9-11e7-8508-8f0ff48e2f78.png)
 ![fan_level2](https://user-images.githubusercontent.com/93999/29713051-86cd023c-89a5-11e7-83cc-5953b8cbbfa5.png)
@@ -154,7 +157,7 @@ sudo service domoticz.sh restart
 ![care1](https://user-images.githubusercontent.com/93999/32418537-08d3c918-c27d-11e7-89e9-10daf79bcdb4.png)
 ![care2](https://user-images.githubusercontent.com/93999/32418538-08ef7e10-c27d-11e7-9ff8-8dfff1c20377.png)
 
-![bat](https://user-images.githubusercontent.com/93999/29769383-c8202814-8bf2-11e7-86b2-3629bfc63dc0.png)
+
 
 
 ### How to obtain device Token
