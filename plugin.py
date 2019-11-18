@@ -278,14 +278,13 @@ class BasePlugin:
                     if (result['state_code'] == 8) and (self.battery == 100) : result['state_code']=200
                     UpdateDevice(self.statusUnit,
                                  (1 if result['state_code'] in [5, 6, 11, 14, 16, 17] else 0), # ON is Cleaning, Back to home, Spot cleaning, Go To, Zone cleaning
-                                 #self.states.get(result['state_code'], 'Undefined') + '. Заряд ' + str(self.battery) + '%',
-                                 self.states.get(result['state_code'], 'Undefined') + '. Charge ' + str(self.battery) + '%',
+                                 self.states.get(result['state_code'], 'Undefined') + _('. Charge ') + str(self.battery) + '%',
                                  self.battery)
 
                     if (result['state_code'] != 17) and (Devices[self.zoneControlUnit].nValue != 0):
                         if (datetime.now() - datetime.strptime(Devices[self.zoneControlUnit].LastUpdate, "%Y-%m-%d %H:%M:%S")).seconds > 29:
                             #Domoticz.Status('Убока зоны %s завершена, площадь %s кв.м., время %s минут  ' % (self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], result['clean_area'], (result['clean_seconds']/60) ))
-                            Domoticz.Status('%s area cleaning completed, area %s sq.m., time %s minutes' % (self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], result['clean_area'], (result['clean_seconds']/60) ))
+                            Domoticz.Status(_('%s area cleaning completed, area %s sq.m., time %s minutes') % (self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], result['clean_area'], (result['clean_seconds']/60) ))
                             UpdateDevice(self.zoneControlUnit, 0, 'Off')
 
 
@@ -397,13 +396,13 @@ class BasePlugin:
             if self.apiRequest('zoned_clean', self.myzones[str(Level)][1]):
                 UpdateDevice(self.zoneControlUnit, 1, str(Level))
                 #Domoticz.Status("Уборка зоны %s" % (self.myzones[str(Level)][0]))
-                Domoticz.Status("Zone cleaning %s" % (self.myzones[str(Level)][0]))
+                Domoticz.Status(_("Zone cleaning %s") % (self.myzones[str(Level)][0]))
 
         elif self.targetControlUnit == Unit and self.isOFF:
             if self.apiRequest('goto', self.mytargets[str(Level)][1]):
                 UpdateDevice(self.targetControlUnit, 1, str(Level))
                 #Domoticz.Status("Перемещение в точку %s" % (self.mytargets[str(Level)][0]))
-                Domoticz.Status("Move to point %s" % (self.mytargets[str(Level)][0]))
+                Domoticz.Status(_("Move to point %s") % (self.mytargets[str(Level)][0]))
 
 
     def onNotification(self, Name, Subject, Text, Status, Priority, Sound, ImageFile):
