@@ -42,6 +42,13 @@ import base64
 from datetime import datetime
 from datetime import timedelta
 
+# init gettext for i18n
+import gettext
+#curLang='fr'
+curLang= os.environ['LANG']
+lang = gettext.translation ('base', localedir='locales', languages= [curLang], fallback=True)
+lang.install()
+_ = lang.gettext
 
 class BasePlugin:
     controlOptions = {
@@ -106,26 +113,26 @@ class BasePlugin:
     # statuses by protocol
     # https://github.com/marcelrv/XiaomiRobotVacuumProtocol/blob/master/StatusMessage.md
     states = {
-        0: 'Unknown 0', # 'Неизвестно 0'
-        1: 'Initiating', # 'Инициализация',
-        2: 'Sleeping', # 'Сон',
-        3: 'Waiting', #'Ожидание',
-        4: 'Unknown 4', # 'Неизвестно 4',
-        5: 'Cleaning', # 'Уборка',
-        6: 'Back to home', # 'Возврат на базу',
-        7: 'Manual mode', # 'Ручной режим',
-        8: 'Charging', # 'Зарядка',
-        9: 'Charging Error', # 'Ошибка зарядки',
-        10: 'Paused', # 'Пауза',
-        11: 'Spot cleaning', # 'Точечная уборка',
-        12: 'In Error', # 'Ошибка ввода',
-        13: 'Shutting down', # 'Выключение',
-        14: 'Updating', # 'Обновление',
-        15: 'Docking', # 'На базе',
-        16: 'Go To', # 'Перемещение в точку',
-        17: 'Zone cleaning', # 'Зональная уборка',
-        100: 'Full', # 'Полный',
-        200: 'Docking' # 'На базе'
+        0:  _('Unknown 0'),
+        1:  _('Initiating'),
+        2:  _('Sleeping'),
+        3:  _('Waiting'),
+        4:  _('Unknown 4'),
+        5:  _('Cleaning'),
+        6:  _('Back to home'),
+        7:  _('Manual mode'),
+        8:  _('Charging'),
+        9:  _('Charging Error'),
+        10: _('Paused'),
+        11: _('Spot cleaning'),
+        12: _('In Error'),
+        13: _('Shutting down'),
+        14: _('Updating'),
+        15: _('Docking'),
+        16: _('Go To'),
+        17: _('Zone cleaning'),
+        100:_('Full'),
+        200:_('Docking')
     }
 
 
