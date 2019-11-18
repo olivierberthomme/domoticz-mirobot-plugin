@@ -1,7 +1,7 @@
-#       
+#
 #       Xiaomi Mi Robot Vacuum Plugin
 #       Author: mrin, 2017, avgays, 2019
-#       
+#
 """
 <plugin key="xiaomi-mi-robot-vacuum" name="Xiaomi Mi Robot Vacuum" author="mrin/avgays" version="0.1.5" wikilink="https://github.com/avgays/domoticz-mirobot-plugin" externallink="">
     <params>
@@ -9,7 +9,7 @@
         <param field="Port" label="MIIOServer Port" width="60px" required="true" default="22222"/>
         <param field="Mode3" label="Zones" width="600px" required="false" default="{}"/>
         <param field="Mode6" label="Targets" width="600px" required="true" default="{}"/>
-        
+
         <param field="Mode2" label="Update interval (sec)" width="30px" required="true" default="15"/>
         <param field="Mode5" label="Fan Level Type" width="300px">
             <options>
@@ -88,7 +88,7 @@ class BasePlugin:
     brushIconName = 'xiaomi-mi-robot-vacuum-brush'
     filterIconName = 'xiaomi-mi-robot-vacuum-filter'
     chargeIconName = 'xiaomi-mi-robot-vacuum-charge'
-    
+
 
     statusUnit = 1
     controlUnit = 2
@@ -106,26 +106,26 @@ class BasePlugin:
     # statuses by protocol
     # https://github.com/marcelrv/XiaomiRobotVacuumProtocol/blob/master/StatusMessage.md
     states = {
-        0: 'Неизвестно 0', #'Unknown 0',
-        1: 'Инициализация', #'Initiating',
-        2: 'Сон', #'Sleeping',
-        3: 'Ожидание', #'Waiting',
-        4: 'Неизвестно 4', #'Unknown 4',
-        5: 'Уборка', #'Cleaning',
-        6: 'Возврат на базу', #'Back to home',
-        7: 'Ручной режим', #'Manual mode',
-        8: 'Зарядка', #'Charging',
-        9: 'Ошибка зарядки', #'Charging Error',
-        10: 'Пауза', #'Paused',
-        11: 'Точечная уборка', #'Spot cleaning',
-        12: 'Ошибка ввода', #'In Error',
-        13: 'Выключение', #'Shutting down',
-        14: 'Обновление', #'Updating',
-        15: 'На базе', #'Docking',
-        16: 'Перемещение в точку', #'Go To',
-        17: 'Зональная уборка', #'Zone cleaning',
-        100: 'Полный', #'Full'
-        200: 'На базе'
+        0: 'Unknown 0', # 'Неизвестно 0'
+        1: 'Initiating', # 'Инициализация',
+        2: 'Sleeping', # 'Сон',
+        3: 'Waiting', #'Ожидание',
+        4: 'Unknown 4', # 'Неизвестно 4',
+        5: 'Cleaning', # 'Уборка',
+        6: 'Back to home', # 'Возврат на базу',
+        7: 'Manual mode', # 'Ручной режим',
+        8: 'Charging', # 'Зарядка',
+        9: 'Charging Error', # 'Ошибка зарядки',
+        10: 'Paused', # 'Пауза',
+        11: 'Spot cleaning', # 'Точечная уборка',
+        12: 'In Error', # 'Ошибка ввода',
+        13: 'Shutting down', # 'Выключение',
+        14: 'Updating', # 'Обновление',
+        15: 'Docking', # 'На базе',
+        16: 'Go To', # 'Перемещение в точку',
+        17: 'Zone cleaning', # 'Зональная уборка',
+        100: 'Full', # 'Полный',
+        200: 'Docking' # 'На базе'
     }
 
 
@@ -151,7 +151,7 @@ class BasePlugin:
         except Exception:
             self.mytargets={}
         Domoticz.Debug("Gots targets: %s" % self.mytargets)
-        
+
         self.heartBeatCnt = 0
         self.subHost = Parameters['Address']
         self.subPort = Parameters['Port']
@@ -162,22 +162,22 @@ class BasePlugin:
 
         if self.iconName not in Images: Domoticz.Image('icons.zip').Create()
         iconID = Images[self.iconName].ID
-        
+
         if self.mainIconName not in Images: Domoticz.Image('xiaomi-mi-robot-vacuum-main.zip').Create()
         mainIconID = Images[self.mainIconName].ID
-        
+
         if self.targetIconName not in Images: Domoticz.Image('xiaomi-mi-robot-vacuum-target.zip').Create()
         targetIconID = Images[self.targetIconName].ID
-        
+
         if self.zoneIconName not in Images: Domoticz.Image('xiaomi-mi-robot-vacuum-zone.zip').Create()
         zoneIconID = Images[self.zoneIconName].ID
-        
+
         if self.sensorsIconName not in Images: Domoticz.Image('xiaomi-mi-robot-vacuum-sensors.zip').Create()
         sensorsIconID = Images[self.sensorsIconName].ID
 
         if self.mbrushIconName not in Images: Domoticz.Image('xiaomi-mi-robot-vacuum-mbrush.zip').Create()
         mbrushIconID = Images[self.mbrushIconName].ID
-        
+
         if self.brushIconName not in Images: Domoticz.Image('xiaomi-mi-robot-vacuum-brush.zip').Create()
         brushIconID = Images[self.brushIconName].ID
 
@@ -271,12 +271,14 @@ class BasePlugin:
                     if (result['state_code'] == 8) and (self.battery == 100) : result['state_code']=200
                     UpdateDevice(self.statusUnit,
                                  (1 if result['state_code'] in [5, 6, 11, 14, 16, 17] else 0), # ON is Cleaning, Back to home, Spot cleaning, Go To, Zone cleaning
-                                 self.states.get(result['state_code'], 'Undefined') + '. Заряд ' + str(self.battery) + '%',
+                                 #self.states.get(result['state_code'], 'Undefined') + '. Заряд ' + str(self.battery) + '%',
+                                 self.states.get(result['state_code'], 'Undefined') + '. Charge ' + str(self.battery) + '%',
                                  self.battery)
-                    
+
                     if (result['state_code'] != 17) and (Devices[self.zoneControlUnit].nValue != 0):
                         if (datetime.now() - datetime.strptime(Devices[self.zoneControlUnit].LastUpdate, "%Y-%m-%d %H:%M:%S")).seconds > 29:
-                            Domoticz.Status('Убока зоны %s завершена, площадь %s кв.м., время %s минут  ' % (self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], result['clean_area'], (result['clean_seconds']/60) ))
+                            #Domoticz.Status('Убока зоны %s завершена, площадь %s кв.м., время %s минут  ' % (self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], result['clean_area'], (result['clean_seconds']/60) ))
+                            Domoticz.Status('%s area cleaning completed, area %s sq.m., time %s minutes' % (self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], result['clean_area'], (result['clean_seconds']/60) ))
                             UpdateDevice(self.zoneControlUnit, 0, 'Off')
 
 
@@ -383,16 +385,18 @@ class BasePlugin:
                     UpdateDevice(self.cSensorsUnit, 100, '100')
 
             self.apiRequest('consumable_status')
-            
+
         elif self.zoneControlUnit == Unit and self.isOFF:
             if self.apiRequest('zoned_clean', self.myzones[str(Level)][1]):
                 UpdateDevice(self.zoneControlUnit, 1, str(Level))
-                Domoticz.Status("Уборка зоны %s" % (self.myzones[str(Level)][0]))
+                #Domoticz.Status("Уборка зоны %s" % (self.myzones[str(Level)][0]))
+                Domoticz.Status("Zone cleaning %s" % (self.myzones[str(Level)][0]))
 
         elif self.targetControlUnit == Unit and self.isOFF:
             if self.apiRequest('goto', self.mytargets[str(Level)][1]):
                 UpdateDevice(self.targetControlUnit, 1, str(Level))
-                Domoticz.Status("Перемещение в точку %s" % (self.mytargets[str(Level)][0]))
+                #Domoticz.Status("Перемещение в точку %s" % (self.mytargets[str(Level)][0]))
+                Domoticz.Status("Move to point %s" % (self.mytargets[str(Level)][0]))
 
 
     def onNotification(self, Name, Subject, Text, Status, Priority, Sound, ImageFile):
