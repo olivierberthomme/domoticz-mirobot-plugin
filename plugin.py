@@ -58,8 +58,8 @@ class BasePlugin:
         "SelectorStyle": "0"
     }
     fanOptions = {
-        "LevelActions": "||||",
-        "LevelNames": "Off|Quiet|Balanced|Turbo|Max",
+        "LevelActions": "|||||",
+        "LevelNames": "Off|Quiet|Balanced|Turbo|Max|Wet",
         "LevelOffHidden": "true",
         "SelectorStyle": "0"
     }
@@ -298,7 +298,7 @@ class BasePlugin:
                     if Parameters['Mode5'] == 'dimmer':
                         UpdateDevice(self.fanDimmerUnit, 2, str(result['fan_level'])) # nValue=2 for show percentage, instead ON/OFF state
                     else:
-                        level = {38: 10, 60: 20, 77: 30, 100: 40}.get(result['fan_level'], None)
+                        level = {38: 10, 60: 20, 77: 30, 100: 40, 105: 50}.get(result['fan_level'], None)
                         if level: UpdateDevice(self.fanSelectorUnit, 1, str(level))
 
                 elif result['cmd'] == 'consumable_status':
@@ -365,11 +365,11 @@ class BasePlugin:
                 self.apiRequest('find')
 
         elif self.fanDimmerUnit == Unit and Parameters['Mode5'] == 'dimmer':
-            Level = 1 if Level == 0 else 100 if Level > 100 else Level
+            Level = 1 if Level == 0 else 100 if Level > 105 else Level
             if self.apiRequest('set_fan_level', Level): UpdateDevice(self.fanDimmerUnit, 2, str(Level))
 
         elif self.fanSelectorUnit == Unit and Parameters['Mode5'] == 'selector':
-            num_level = {10: 38, 20: 60, 30: 77, 40: 90}.get(Level, None)
+            num_level = {10: 38, 20: 60, 30: 77, 40: 90, 50:105}.get(Level, None)
             if num_level and self.apiRequest('set_fan_level', num_level): UpdateDevice(self.fanSelectorUnit, 1, str(Level))
 
         elif self.cResetControlUnit == Unit:
