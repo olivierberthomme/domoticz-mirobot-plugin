@@ -34,7 +34,7 @@ import sys
 #module_paths = [x[0] for x in os.walk( os.path.join(os.path.dirname(__file__), '.', '.env/lib/') ) if x[0].endswith('site-packages') ]
 #for mp in module_paths:
 #    sys.path.append(mp)
-sys.path.append('/usr/lib/python3.5')
+#sys.path.append('/usr/lib/python3.7')
 import Domoticz
 import msgpack
 import json
@@ -45,8 +45,8 @@ from datetime import timedelta
 # init gettext for i18n
 import gettext
 #curLang='fr'
-curLang= os.environ['LANG']
-lang = gettext.translation ('base', localedir='locales', languages= [curLang], fallback=True)
+#curLang= os.environ['LANG']
+lang = gettext.translation ('base', localedir='locales', languages='fr', fallback=True)
 lang.install()
 _ = lang.gettext
 
@@ -273,18 +273,19 @@ class BasePlugin:
                 if 'exception' in result: return
 
                 if result['cmd'] == 'status':
+                    Domoticz.Debug("cmd == status")
                     now = datetime.now()
                     self.battery=int(result['battery'])
-                    if (result['state_code'] == 8) and (self.battery == 100) : result['state_code']=200
-                    UpdateDevice(self.statusUnit,
+                    if (result['state_code'] == 8) and (self.battery == 100):
+                        result['state_code']=200
+                        UpdateDevice(self.statusUnit,
                                  (1 if result['state_code'] in [5, 6, 11, 14, 16, 17] else 0), # ON is Cleaning, Back to home, Spot cleaning, Go To, Zone cleaning
                                  self.states.get(result['state_code'], 'Undefined') + _('. Charge ') + str(self.battery) + '%',
                                  self.battery)
 
                     if (result['state_code'] != 17) and (Devices[self.zoneControlUnit].nValue != 0):
                         if (datetime.now() - datetime.strptime(Devices[self.zoneControlUnit].LastUpdate, "%Y-%m-%d %H:%M:%S")).seconds > 29:
-                            #Domoticz.Status('Убока зоны %s завершена, площадь %s кв.м., время %s минут  ' % (self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], result['clean_area'], (result['clean_seconds']/60) ))
-                            Domoticz.Status(_('%s area cleaning completed, area %s sq.m., time %s minutes') % (self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], result['clean_area'], (result['clean_seconds']/60) ))
+                            Domoticz.Status(_('%s area cleaning completed, area %s sq.m., time %s minutes') % (self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], str(result['clean_area']), str(result['clean_seconds']/60) ))
                             UpdateDevice(self.zoneControlUnit, 0, 'Off')
 
 
@@ -298,7 +299,8 @@ class BasePlugin:
                     if Parameters['Mode5'] == 'dimmer':
                         UpdateDevice(self.fanDimmerUnit, 2, str(result['fan_level'])) # nValue=2 for show percentage, instead ON/OFF state
                     else:
-                        level = {38: 10, 60: 20, 77: 30, 100: 40, 105: 50}.get(result['fan_level'], None)
+                        #level = {38: 10, 60: 20, 77: 30, 100: 40, 105: 50}.get(result['fan_level'], None)
+                        level = {10: 101, 20: 102, 30: 103, 40: 104, 50:105}.get(result['fan_level'], None)
                         if level: UpdateDevice(self.fanSelectorUnit, 1, str(level))
 
                 elif result['cmd'] == 'consumable_status':
@@ -369,7 +371,7 @@ class BasePlugin:
             if self.apiRequest('set_fan_level', Level): UpdateDevice(self.fanDimmerUnit, 2, str(Level))
 
         elif self.fanSelectorUnit == Unit and Parameters['Mode5'] == 'selector':
-            num_level = {10: 38, 20: 60, 30: 77, 40: 90, 50:105}.get(Level, None)
+            num_level = {10: 101, 20: 102, 30: 103, 40: 104, 50:105}.get(Level, None)
             if num_level and self.apiRequest('set_fan_level', num_level): UpdateDevice(self.fanSelectorUnit, 1, str(Level))
 
         elif self.cResetControlUnit == Unit:
