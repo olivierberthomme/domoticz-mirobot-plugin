@@ -273,25 +273,50 @@ class BasePlugin:
                 if 'exception' in result: return
 
                 if result['cmd'] == 'status':
-                    Domoticz.Debug("cmd == status")
                     now = datetime.now()
                     self.battery=int(result['battery'])
-                    if (result['state_code'] == 8) and (self.battery == 100):
+                    #Domoticz.Debug("status_t: {}".format(type(Devices[self.statusUnit].LastUpdate)))
+                    #Domoticz.Debug("status_s: {}".format((Devices[self.statusUnit].LastUpdate)))
+                    #Domoticz.Debug("status: {}".format(datetime.fromisoformat(Devices[self.statusUnit].LastUpdate)))
+
+                    #Domoticz.Debug("zone: {}".format(Devices[self.zoneControlUnit].LastUpdate))
+                    #Domoticz.Debug("control: {}".format(Devices[self.zoneControlUnit].LastUpdate))
+                    #Domoticz.Debug("target: {}".format(Devices[self.targetControlUnit].LastUpdate))
+
+                    
+                    if (result['state_code'] == 8):
                         result['state_code']=200
                         UpdateDevice(self.statusUnit,
                                  (1 if result['state_code'] in [5, 6, 11, 14, 16, 17] else 0), # ON is Cleaning, Back to home, Spot cleaning, Go To, Zone cleaning
                                  self.states.get(result['state_code'], 'Undefined') + _('. Charge ') + str(self.battery) + '%',
                                  self.battery)
 
+                    if (result['state_code'] == 3):
+                        UpdateDevice(self.statusUnit,
+                                 (1 if result['state_code'] in [5, 6, 11, 14, 16, 17] else 0), # ON is Cleaning, Back to home, Spot cleaning, Go To, Zone cleaning
+                                 self.states.get(result['state_code'], 'Undefined') + _('. Charge ') + str(self.battery) + '%',
+                                 self.battery)
+
                     if (result['state_code'] != 17) and (Devices[self.zoneControlUnit].nValue != 0):
-                        if (datetime.now() - datetime.strptime(Devices[self.zoneControlUnit].LastUpdate, "%Y-%m-%d %H:%M:%S")).seconds > 29:
+                        if (datetime.now() - datetime.fromisoformat(Devices[self.zoneControlUnit].LastUpdate)).seconds > 29:
                             Domoticz.Status(_('%s area cleaning completed, area %s sq.m., time %s minutes') % (self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], str(result['clean_area']), str(result['clean_seconds']/60) ))
                             UpdateDevice(self.zoneControlUnit, 0, 'Off')
 
+                    if (result['state_code'] == 17) and (Devices[self.zoneControlUnit].nValue != 0):
+                        UpdateDevice(self.statusUnit,
+                            (1 if result['state_code'] in [5, 6, 11, 14, 16, 17] else 0), # ON is Cleaning, Back to home, Spot cleaning, Go To, Zone cleaning
+                            self.states.get(result['state_code'], 'Undefined') + _('. Charge ') + str(self.battery) + '%',
+                            self.battery)
 
                     if result['state_code'] != 16 and (Devices[self.targetControlUnit].nValue != 0):
-                        UpdateDevice(self.targetControlUnit, 0, 'Off')
-#                        Domoticz.Log('Target LastUpdate: %s' % Devices[self.targetControlUnit].LastUpdate)
+                        if (datetime.now() - datetime.fromisoformat(Devices[self.targetControlUnit].LastUpdate)).seconds > 29:
+                            UpdateDevice(self.targetControlUnit, 0, 'Off')
+
+                    if result['state_code'] == 16 and (Devices[self.targetControlUnit].nValue != 0):
+                        UpdateDevice(self.statusUnit,
+                            (1 if result['state_code'] in [5, 6, 11, 14, 16, 17] else 0), # ON is Cleaning, Back to home, Spot cleaning, Go To, Zone cleaning
+                            self.states.get(result['state_code'], 'Undefined') + _('. Charge ') + str(self.battery) + '%',
+                            self.battery)
 
 #                    UpdateDevice(self.batteryUnit, result['battery'], str(result['battery']), result['battery'],
 #                                 AlwaysUpdate=(self.heartBeatCnt % 100 == 0))
@@ -317,6 +342,9 @@ class BasePlugin:
 
         except msgpack.UnpackException as e:
             Domoticz.Error('Unpacker exception [%s]' % str(e))
+        except:
+            exType, ex, tb = sys.exc_info()
+            Domoticz.Error("Exception line {}: {} -- {}".format(tb.tb_lineno,exType,ex))
 
     def onCommand(self, Unit, Command, Level, Hue):
         Domoticz.Debug("onCommand called for Unit " + str(Unit) + ": Command '" + str(Command) + "', Level: " + str(Level))
