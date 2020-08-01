@@ -14,6 +14,7 @@
         <param field="Mode5" label="Fan Level Type" width="300px">
             <options>
                 <option label="Standard (Quiet, Balanced, Turbo, Max)" value="selector" default="true"/>
+                <option label="Robotrock S6" value="s6" default="true"/>
                 <option label="Slider" value="dimmer"/>
             </options>
         </param>
@@ -205,7 +206,7 @@ class BasePlugin:
         if self.fanDimmerUnit not in Devices and Parameters['Mode5'] == 'dimmer':
             Domoticz.Device(Name='Fan Level', Unit=self.fanDimmerUnit, Type=244, Subtype=73, Switchtype=7,
                             Image=mainIconID).Create()
-        elif self.fanSelectorUnit not in Devices and Parameters['Mode5'] == 'selector':
+        elif self.fanSelectorUnit not in Devices and (Parameters['Mode5'] == 'selector' or Parameters['Mode5'] == 's6'):
             Domoticz.Device(Name='Fan Level', Unit=self.fanSelectorUnit, TypeName='Selector Switch',
                                 Image=mainIconID, Options=self.fanOptions).Create()
 
@@ -327,8 +328,10 @@ class BasePlugin:
 
                     if Parameters['Mode5'] == 'dimmer':
                         UpdateDevice(self.fanDimmerUnit, 2, str(result['fan_level'])) # nValue=2 for show percentage, instead ON/OFF state
+                    elif Parameters['Mode5'] == 'selector':
+                        level = {38: 10, 60: 20, 77: 30, 100: 40, 105: 50}.get(result['fan_level'], None)
+                        if level: UpdateDevice(self.fanSelectorUnit, 1, str(level))
                     else:
-                        #level = {38: 10, 60: 20, 77: 30, 100: 40, 105: 50}.get(result['fan_level'], None)
                         level = {10: 101, 20: 102, 30: 103, 40: 104, 50:105}.get(result['fan_level'], None)
                         if level: UpdateDevice(self.fanSelectorUnit, 1, str(level))
 
@@ -403,6 +406,10 @@ class BasePlugin:
             if self.apiRequest('set_fan_level', Level): UpdateDevice(self.fanDimmerUnit, 2, str(Level))
 
         elif self.fanSelectorUnit == Unit and Parameters['Mode5'] == 'selector':
+            num_level = {10: 38, 20: 60, 30: 77, 40: 90, 50:105}.get(Level, None)
+            if num_level and self.apiRequest('set_fan_level', num_level): UpdateDevice(self.fanSelectorUnit, 1, str(Level))
+
+        elif self.fanSelectorUnit == Unit and Parameters['Mode5'] == 's6':
             num_level = {10: 101, 20: 102, 30: 103, 40: 104, 50:105}.get(Level, None)
             if num_level and self.apiRequest('set_fan_level', num_level): UpdateDevice(self.fanSelectorUnit, 1, str(Level))
 
