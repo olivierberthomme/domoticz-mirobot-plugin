@@ -39,10 +39,6 @@
 import os
 import sys
 
-#module_paths = [x[0] for x in os.walk( os.path.join(os.path.dirname(__file__), '.', '.env/lib/') ) if x[0].endswith('site-packages') ]
-#for mp in module_paths:
-#    sys.path.append(mp)
-#sys.path.append('/usr/lib/python3.7')
 import Domoticz
 import msgpack
 import json
@@ -50,13 +46,7 @@ import base64
 from datetime import datetime
 from datetime import timedelta
 
-# init gettext for i18n
 import gettext
-#curLang='fr'
-#curLang= os.environ['LANG']
-#lang = gettext.translation ('base', localedir='locales', languages='fr', fallback=True)
-#lang.install()
-#_ = lang.gettext
 
 class BasePlugin:
     controlOptions = {
@@ -312,13 +302,6 @@ class BasePlugin:
                     now = datetime.now()
                     self.battery=int(result['battery'])
                     Domoticz.Debug("state: {}".format(_(self.states.get(result['state_code'], 'Undefined'))))
-                    #Domoticz.Debug("status_s: {}".format((Devices[self.statusUnit].LastUpdate)))
-                    #Domoticz.Debug("status: {}".format(datetime.fromisoformat(Devices[self.statusUnit].LastUpdate)))
-
-                    #Domoticz.Debug("zone: {}".format(Devices[self.zoneControlUnit].LastUpdate))
-                    #Domoticz.Debug("control: {}".format(Devices[self.zoneControlUnit].LastUpdate))
-                    #Domoticz.Debug("target: {}".format(Devices[self.targetControlUnit].LastUpdate))
-
                     
                     if (result['state_code'] == 8):
                         result['state_code']=200
@@ -546,21 +529,19 @@ def translateStates():
         100:_('Full'),
         200:_('Docking')
     }
-    if True:
-        if True:
-            langEn = gettext.NullTranslations()
-            langFr = gettext.translation ('base', localedir='locales', languages='fr', fallback=True)
-            langRu = gettext.translation ('base', localedir='locales', languages='ru', fallback=True)
-            if Parameters['Mode1'] == 'fr':
-               langFr.install()
-               _ = langFr.gettext
-            elif Parameters['Mode1'] == 'ru':
-               langRu.install()
-               _ = langRu.gettext
-            else:
-               langEn.install()
-               _ = langEn.gettext
-    Domoticz.Debug("translateStates... %s" % _('Back to home'))
+    langEn = gettext.NullTranslations()
+    langFr = gettext.translation ('base', localedir='locales', languages='fr', fallback=True)
+    langRu = gettext.translation ('base', localedir='locales', languages='ru', fallback=True)
+    if Parameters['Mode1'] == 'fr':
+       langFr.install()
+       _ = langFr.gettext
+    elif Parameters['Mode1'] == 'ru':
+       langRu.install()
+       _ = langRu.gettext
+    else:
+       langEn.install()
+       _ = langEn.gettext
+    Domoticz.Debug("translateStates... %s" % _('Initiating'))
 
 
 def UpdateDevice(Unit, nValue, sValue, BatteryLevel=255, AlwaysUpdate=False):
