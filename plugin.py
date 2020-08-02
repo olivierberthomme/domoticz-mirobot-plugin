@@ -14,10 +14,18 @@
         <param field="Mode5" label="Fan Level Type" width="300px">
             <options>
                 <option label="Standard (Quiet, Balanced, Turbo, Max)" value="selector" default="true"/>
+                <option label="Roborock S6" value="s6" default="true"/>
                 <option label="Slider" value="dimmer"/>
             </options>
         </param>
-        <param field="Mode4" label="Debug" width="75px">
+        <param field="Mode1" label="Lang" width="100px">
+            <options>
+                <option label="English" value="en" default="true"/>
+                <option label="Français" value="fr"/>
+                <option label="Russian" value="ru"/>
+            </options>
+        </param>
+        <param field="Mode4" label="Debug" width="100px">
             <options>
                 <option label="True" value="Debug" default="true"/>
                 <option label="False" value="Normal"/>
@@ -31,10 +39,6 @@
 import os
 import sys
 
-#module_paths = [x[0] for x in os.walk( os.path.join(os.path.dirname(__file__), '.', '.env/lib/') ) if x[0].endswith('site-packages') ]
-#for mp in module_paths:
-#    sys.path.append(mp)
-sys.path.append('/usr/lib/python3.5')
 import Domoticz
 import msgpack
 import json
@@ -42,13 +46,7 @@ import base64
 from datetime import datetime
 from datetime import timedelta
 
-# init gettext for i18n
 import gettext
-#curLang='fr'
-curLang= os.environ['LANG']
-lang = gettext.translation ('base', localedir='locales', languages= [curLang], fallback=True)
-lang.install()
-_ = lang.gettext
 
 class BasePlugin:
     controlOptions = {
@@ -110,29 +108,31 @@ class BasePlugin:
     zoneControlUnit = 11
     targetControlUnit = 12
 
+    def N_(message): return message
+
     # statuses by protocol
     # https://github.com/marcelrv/XiaomiRobotVacuumProtocol/blob/master/StatusMessage.md
     states = {
-        0:  _('Unknown 0'),
-        1:  _('Initiating'),
-        2:  _('Sleeping'),
-        3:  _('Waiting'),
-        4:  _('Unknown 4'),
-        5:  _('Cleaning'),
-        6:  _('Back to home'),
-        7:  _('Manual mode'),
-        8:  _('Charging'),
-        9:  _('Charging Error'),
-        10: _('Paused'),
-        11: _('Spot cleaning'),
-        12: _('In Error'),
-        13: _('Shutting down'),
-        14: _('Updating'),
-        15: _('Docking'),
-        16: _('Go To'),
-        17: _('Zone cleaning'),
-        100:_('Full'),
-        200:_('Docking')
+        0:  N_('Unknown 0'),
+        1:  N_('Initiating'),
+        2:  N_('Sleeping'),
+        3:  N_('Waiting'),
+        4:  N_('Unknown 4'),
+        5:  N_('Cleaning'),
+        6:  N_('Back to home'),
+        7:  N_('Manual mode'),
+        8:  N_('Charging'),
+        9:  N_('Charging Error'),
+        10: N_('Paused'),
+        11: N_('Spot cleaning'),
+        12: N_('In Error'),
+        13: N_('Shutting down'),
+        14: N_('Updating'),
+        15: N_('Docking'),
+        16: N_('Go To'),
+        17: N_('Zone cleaning'),
+        100:N_('Full'),
+        200:N_('Docking')
     }
 
 
@@ -147,6 +147,32 @@ class BasePlugin:
         if Parameters['Mode4'] == 'Debug':
             Domoticz.Debugging(1)
             DumpConfigToLog()
+
+        try:
+            langEn = gettext.NullTranslations()
+            langFr = gettext.translation ('base', localedir=(os.path.dirname(os.path.realpath(__file__))+'/locales'), languages=['fr'])
+            langRu = gettext.translation ('base', localedir=(os.path.dirname(os.path.realpath(__file__))+'/locales'), languages=['ru'])
+            global _
+            if Parameters['Mode1'] == 'fr':
+               langFr.install()
+               _ = langFr.gettext
+            elif Parameters['Mode1'] == 'ru':
+               langRu.install()
+               _ = langRu.gettext
+            else:
+               langEn.install()
+               _ = langEn.gettext
+            translateStates()
+            Domoticz.Debug("Plugin translated to: %s"  % Parameters['Mode1'])
+            Domoticz.Debug("onStart: %s"  % _('Docking'))
+        except Exception:
+            lang = gettext.NullTranslations()
+            lang.install()
+            _ = lang.gettext
+            Domoticz.Debug("Plugin translated exception")
+            exType, ex, tb = sys.exc_info()
+            Domoticz.Error("Exception line {}: {} -- {}".format(tb.tb_lineno,exType,ex))
+
         try:
             self.myzones = json.loads(Parameters['Mode3'])
         except Exception:
@@ -205,7 +231,7 @@ class BasePlugin:
         if self.fanDimmerUnit not in Devices and Parameters['Mode5'] == 'dimmer':
             Domoticz.Device(Name='Fan Level', Unit=self.fanDimmerUnit, Type=244, Subtype=73, Switchtype=7,
                             Image=mainIconID).Create()
-        elif self.fanSelectorUnit not in Devices and Parameters['Mode5'] == 'selector':
+        elif self.fanSelectorUnit not in Devices and (Parameters['Mode5'] == 'selector' or Parameters['Mode5'] == 's6'):
             Domoticz.Device(Name='Fan Level', Unit=self.fanSelectorUnit, TypeName='Selector Switch',
                                 Image=mainIconID, Options=self.fanOptions).Create()
 
@@ -275,30 +301,56 @@ class BasePlugin:
                 if result['cmd'] == 'status':
                     now = datetime.now()
                     self.battery=int(result['battery'])
-                    if (result['state_code'] == 8) and (self.battery == 100) : result['state_code']=200
-                    UpdateDevice(self.statusUnit,
+                    Domoticz.Debug("state: {}".format(_(self.states.get(result['state_code'], 'Undefined'))))
+                    
+                    if (result['state_code'] == 8):
+                        result['state_code']=200
+                        UpdateDevice(self.statusUnit,
+                                 (1 if result['state_code'] in [5, 6, 11, 14, 16, 17] else 0), # ON is Cleaning, Back to home, Spot cleaning, Go To, Zone cleaning
+                                 _(self.states.get(result['state_code'], 'Undefined')) + _('. Charge ') + str(self.battery) + '%',
+                                 self.battery)
+
+                    if (result['state_code'] == 3):
+                        UpdateDevice(self.statusUnit,
                                  (1 if result['state_code'] in [5, 6, 11, 14, 16, 17] else 0), # ON is Cleaning, Back to home, Spot cleaning, Go To, Zone cleaning
                                  self.states.get(result['state_code'], 'Undefined') + _('. Charge ') + str(self.battery) + '%',
                                  self.battery)
 
                     if (result['state_code'] != 17) and (Devices[self.zoneControlUnit].nValue != 0):
-                        if (datetime.now() - datetime.strptime(Devices[self.zoneControlUnit].LastUpdate, "%Y-%m-%d %H:%M:%S")).seconds > 29:
-                            #Domoticz.Status('Убока зоны %s завершена, площадь %s кв.м., время %s минут  ' % (self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], result['clean_area'], (result['clean_seconds']/60) ))
-                            Domoticz.Status(_('%s area cleaning completed, area %s sq.m., time %s minutes') % (self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], result['clean_area'], (result['clean_seconds']/60) ))
+                        if (datetime.now() - datetime.fromisoformat(Devices[self.zoneControlUnit].LastUpdate)).seconds > 29:
+                            Domoticz.Status(_('{} area cleaning completed, area {:.2f} sq.m., time {:.1f} minutes').format(self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], result['clean_area'], result['clean_seconds']/60 ))
+                            UpdateDevice(self.statusUnit,
+                                 (1 if result['state_code'] in [5, 6, 11, 14, 16, 17] else 0), # ON is Cleaning, Back to home, Spot cleaning, Go To, Zone cleaning
+                                 _('{} area cleaning completed, area {:.2f} sq.m., time {:.1f} minutes').format(self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], result['clean_area'], result['clean_seconds']/60 ),
+                                 self.battery)
                             UpdateDevice(self.zoneControlUnit, 0, 'Off')
 
+                    if (result['state_code'] == 17) and (Devices[self.zoneControlUnit].nValue != 0):
+                        UpdateDevice(self.statusUnit,
+                            (1 if result['state_code'] in [5, 6, 11, 14, 16, 17] else 0), # ON is Cleaning, Back to home, Spot cleaning, Go To, Zone cleaning
+                            self.states.get(result['state_code'], 'Undefined') + _('. Charge ') + str(self.battery) + '%',
+                            self.battery)
 
                     if result['state_code'] != 16 and (Devices[self.targetControlUnit].nValue != 0):
-                        UpdateDevice(self.targetControlUnit, 0, 'Off')
-#                        Domoticz.Log('Target LastUpdate: %s' % Devices[self.targetControlUnit].LastUpdate)
+                        if (datetime.now() - datetime.fromisoformat(Devices[self.targetControlUnit].LastUpdate)).seconds > 29:
+                            UpdateDevice(self.targetControlUnit, 0, 'Off')
+
+                    if result['state_code'] == 16 and (Devices[self.targetControlUnit].nValue != 0):
+                        UpdateDevice(self.statusUnit,
+                            (1 if result['state_code'] in [5, 6, 11, 14, 16, 17] else 0), # ON is Cleaning, Back to home, Spot cleaning, Go To, Zone cleaning
+                            self.states.get(result['state_code'], 'Undefined') + _('. Charge ') + str(self.battery) + '%',
+                            self.battery)
 
 #                    UpdateDevice(self.batteryUnit, result['battery'], str(result['battery']), result['battery'],
 #                                 AlwaysUpdate=(self.heartBeatCnt % 100 == 0))
 
                     if Parameters['Mode5'] == 'dimmer':
                         UpdateDevice(self.fanDimmerUnit, 2, str(result['fan_level'])) # nValue=2 for show percentage, instead ON/OFF state
-                    else:
+                    elif Parameters['Mode5'] == 'selector':
                         level = {38: 10, 60: 20, 77: 30, 100: 40, 105: 50}.get(result['fan_level'], None)
+                        if level: UpdateDevice(self.fanSelectorUnit, 1, str(level))
+                    else:
+                        level = {10: 101, 20: 102, 30: 103, 40: 104, 50:105}.get(result['fan_level'], None)
                         if level: UpdateDevice(self.fanSelectorUnit, 1, str(level))
 
                 elif result['cmd'] == 'consumable_status':
@@ -315,6 +367,9 @@ class BasePlugin:
 
         except msgpack.UnpackException as e:
             Domoticz.Error('Unpacker exception [%s]' % str(e))
+        except:
+            exType, ex, tb = sys.exc_info()
+            Domoticz.Error("Exception line {}: {} -- {}".format(tb.tb_lineno,exType,ex))
 
     def onCommand(self, Unit, Command, Level, Hue):
         Domoticz.Debug("onCommand called for Unit " + str(Unit) + ": Command '" + str(Command) + "', Level: " + str(Level))
@@ -370,6 +425,10 @@ class BasePlugin:
 
         elif self.fanSelectorUnit == Unit and Parameters['Mode5'] == 'selector':
             num_level = {10: 38, 20: 60, 30: 77, 40: 90, 50:105}.get(Level, None)
+            if num_level and self.apiRequest('set_fan_level', num_level): UpdateDevice(self.fanSelectorUnit, 1, str(Level))
+
+        elif self.fanSelectorUnit == Unit and Parameters['Mode5'] == 's6':
+            num_level = {10: 101, 20: 102, 30: 103, 40: 104, 50:105}.get(Level, None)
             if num_level and self.apiRequest('set_fan_level', num_level): UpdateDevice(self.fanSelectorUnit, 1, str(Level))
 
         elif self.cResetControlUnit == Unit:
@@ -445,6 +504,44 @@ class BasePlugin:
             Domoticz.Error('Pack exception [%s]' % str(e))
             return False
 
+def translateStates():
+    global states
+    global _
+    states = {
+        0:  _('Unknown 0'),
+        1:  _('Initiating'),
+        2:  _('Sleeping'),
+        3:  _('Waiting'),
+        4:  _('Unknown 4'),
+        5:  _('Cleaning'),
+        6:  _('Back to home'),
+        7:  _('Manual mode'),
+        8:  _('Charging'),
+        9:  _('Charging Error'),
+        10: _('Paused'),
+        11: _('Spot cleaning'),
+        12: _('In Error'),
+        13: _('Shutting down'),
+        14: _('Updating'),
+        15: _('Docking'),
+        16: _('Go To'),
+        17: _('Zone cleaning'),
+        100:_('Full'),
+        200:_('Docking')
+    }
+    langEn = gettext.NullTranslations()
+    langFr = gettext.translation ('base', localedir='locales', languages='fr', fallback=True)
+    langRu = gettext.translation ('base', localedir='locales', languages='ru', fallback=True)
+    if Parameters['Mode1'] == 'fr':
+       langFr.install()
+       _ = langFr.gettext
+    elif Parameters['Mode1'] == 'ru':
+       langRu.install()
+       _ = langRu.gettext
+    else:
+       langEn.install()
+       _ = langEn.gettext
+    Domoticz.Debug("translateStates... %s" % _('Initiating'))
 
 
 def UpdateDevice(Unit, nValue, sValue, BatteryLevel=255, AlwaysUpdate=False):
