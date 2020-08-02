@@ -300,10 +300,10 @@ class BasePlugin:
 
                     if (result['state_code'] != 17) and (Devices[self.zoneControlUnit].nValue != 0):
                         if (datetime.now() - datetime.fromisoformat(Devices[self.zoneControlUnit].LastUpdate)).seconds > 29:
-                            Domoticz.Status(_('%s area cleaning completed, area %s sq.m., time %s minutes') % (self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], str(result['clean_area']), str(result['clean_seconds']/60) ))
+                            Domoticz.Status(_('{} area cleaning completed, area {:.2f} sq.m., time {:.1f} minutes').format(self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], result['clean_area'], result['clean_seconds']/60 ))
                             UpdateDevice(self.statusUnit,
                                  (1 if result['state_code'] in [5, 6, 11, 14, 16, 17] else 0), # ON is Cleaning, Back to home, Spot cleaning, Go To, Zone cleaning
-                                 _('%s area cleaning completed, area %s sq.m., time %s minutes') % (self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], str(result['clean_area']), str(result['clean_seconds']/60) ),
+                                 _('{} area cleaning completed, area {:.2f} sq.m., time {:.1f} minutes').format(self.myzones[str(Devices[self.zoneControlUnit].sValue)][0], result['clean_area'], result['clean_seconds']/60 ),
                                  self.battery)
                             UpdateDevice(self.zoneControlUnit, 0, 'Off')
 
