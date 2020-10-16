@@ -325,6 +325,15 @@ class BasePlugin:
                                  self.battery)
                             UpdateDevice(self.zoneControlUnit, 0, 'Off')
 
+                    if (result['state_code'] != 5) and (Devices[self.controlUnit].nValue != 0):
+                        if (datetime.now() - datetime.fromisoformat(Devices[self.controlUnit].LastUpdate)).seconds > 29:
+                            Domoticz.Status(_('Home cleaning completed, area {:.2f} sq.m., time {:.1f} minutes').format(result['clean_area'], result['clean_seconds']/60 ))
+                            UpdateDevice(self.statusUnit,
+                                 (1 if result['state_code'] in [5, 6, 11, 14, 16, 17] else 0), # ON is Cleaning, Back to home, Spot cleaning, Go To, Zone cleaning
+                                 _('Home cleaning completed, area {:.2f} sq.m., time {:.1f} minutes').format(result['clean_area'], result['clean_seconds']/60 ),
+                                 self.battery)
+                            UpdateDevice(self.controlUnit, 0, 'Off')
+
                     if (result['state_code'] == 17) and (Devices[self.zoneControlUnit].nValue != 0):
                         UpdateDevice(self.statusUnit,
                             (1 if result['state_code'] in [5, 6, 11, 14, 16, 17] else 0), # ON is Cleaning, Back to home, Spot cleaning, Go To, Zone cleaning
@@ -395,11 +404,13 @@ class BasePlugin:
             if Level == 10: # Clean
                 if self.apiRequest('start') and self.isOFF:
                     UpdateDevice(self.statusUnit, 1, self.states[5])  # Cleaning
+                    UpdateDevice(self.controlUnit, 1, str(Level))  # Cleaning
 
             elif Level == 20: # Home
                 if self.apiRequest('home') and sDevice.sValue in [
                     self.states[5], self.states[3], self.states[10]]: # Cleaning, Waiting, Paused
                     UpdateDevice(self.statusUnit, 1, self.states[6])  # Back to home
+                    UpdateDevice(self.controlUnit, 1, str(Level))  # Home
 
             elif Level == 30: # Spot
                 if self.apiRequest('spot') and self.isOFF and sDevice.sValue != self.states[8]: # Spot cleaning will not start if Charging
@@ -409,12 +420,14 @@ class BasePlugin:
                 if self.apiRequest('pause') and self.isON:
                     if sDevice.sValue == self.states[11]: # For Spot cleaning - Pause treats as Stop
                         UpdateDevice(self.statusUnit, 0, self.states[3])  # Waiting
+                        UpdateDevice(self.controlUnit, 1, '50')  # Stop
                     else:
                         UpdateDevice(self.statusUnit, 0, self.states[10])  # Paused
 
             elif Level == 50: # Stop
                 if self.apiRequest('stop') and self.isON and sDevice.sValue not in [self.states[11], self.states[6]]: # Stop doesn't work for Spot cleaning, Back to home
                     UpdateDevice(self.statusUnit, 0, self.states[3]) # Waiting
+                    UpdateDevice(self.controlUnit, 1, str(Level))  # Stop
 
             elif Level == 60: # Find
                 self.apiRequest('find')
